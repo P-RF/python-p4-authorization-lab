@@ -69,7 +69,7 @@ class Logout(Resource):
 
     def delete(self):
 
-        session['user_id'] = None
+        session.pop('user_id', None)
         
         return {}, 204
 
@@ -84,15 +84,29 @@ class CheckSession(Resource):
         
         return {}, 401
 
+@app.before_request
+def check_if_logged_in():
+    if 'user_id' not in session \
+        and request.endpoint not in [
+            'article_list', 'clear', 'login', 'logout', 'check_session'
+    ]:
+        return {'error': 'Unauthorized'}, 401
+
 class MemberOnlyIndex(Resource):
     
     def get(self):
-        pass
+
+        articles = Article.query.filter(Article.is_member_only == True).all()
+        return [article.to_dict() for article in articles]
 
 class MemberOnlyArticle(Resource):
     
     def get(self, id):
-        pass
+        
+        article = Article.query.filter(Article.id == id).first()
+        if not article:
+            return{'error': 'Not Found'}, 404
+        return article.to_dict()
 
 api.add_resource(ClearSession, '/clear', endpoint='clear')
 api.add_resource(IndexArticle, '/articles', endpoint='article_list')
